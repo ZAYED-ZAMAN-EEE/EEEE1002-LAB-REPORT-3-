@@ -1,0 +1,124 @@
+//SHAPE DETECTOR CODE
+
+// Include files for required libraries
+#include <stdio.h>
+#include <iostream>
+#include "opencv2/core.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv_aee.hpp"
+
+using namespace std;
+using namespace cv;
+
+// Pi2c car(0x22); // Configure the I2C interface to the Car as a global variable
+
+void setup(void)
+{
+    setupCamera(320, 240);  // Enable the camera for OpenCV
+}
+
+int main( int argc, char** argv )
+{
+    setup();    // Call a setup function to prepare IO and devices
+
+    cv::namedWindow("Photo");   // Create a GUI window called photo
+
+    while(1)    // Main loop to perform image processing
+    {
+        Mat frame;
+
+        while(frame.empty())
+            frame = captureFrame(); // Capture a frame from the camera and store in a new matrix variable
+
+            //NEW CODE
+            flip(frame, frame, -1);
+
+        cv::imshow("Photo", frame); //Display the image in the windo
+
+        int key = cv::waitKey(1);   // Wait 1ms for a keypress (required to update windows)
+
+        key = (key==255) ? -1 : key;    // Check if the ESC key has been pressed
+        if (key == 27)
+        break;
+	}
+    Mat hsvImage;
+    cvtColor(frame, hsvImage, COLOR_BGR2HSV);
+
+    Mat umbrella = imread("Umbrella.png");
+    Mat circle = imread("Circle.png");
+    Mat star = imread("Star.png");
+    Mat triangle = imread("Triangle.png");
+
+    Scalar lowerPink = Scalar(145, 125, 125);
+    Scalar upperPink = Scalar(150, 175, 175);
+    Scalar compareWhite = Scalar(255, 255, 255);
+
+    Mat pinkMask;
+    Mat circleMask;
+    Mat umbrellaMask;
+    Mat starMask;
+    Mat triangleMask;
+    inRange(hsvImage, lowerPink, upperPink, pinkMask);
+
+    std::vector<std::vector<Point> > pinkContours;
+    std::vector<Vec4i> pinkHierarchy;
+    findContours(pinkMask, pinkContours, pinkHierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    Mat contourImage = frame.clone();
+
+
+    for (size_t i = 0; i < pinkContours.size(); i++)
+        {
+            drawContours(contourImage, pinkContours, static_cast<int>(i), Scalar(240, 32, 160), 2, LINE_8, pinkHierarchy, 0);
+        }
+
+    Mat output_circle;
+    Mat output_umbrella;
+    Mat output_star;
+    Mat output_triangle;
+
+    compare(frame, circle, output_circle, CMP_EQ);
+    compare(frame, umbrella, output_umbrella, CMP_EQ);
+    compare(frame, star, output_star, CMP_EQ);
+    compare(frame, triangle, output_triangle, CMP_EQ);
+
+    inRange(output_circle, compareWhite, compareWhite, circleMask);
+    inRange(output_umbrella, compareWhite, compareWhite, umbrellaMask);
+    inRange(output_star, compareWhite, compareWhite, starMask);
+    inRange(output_triangle, compareWhite, compareWhite, triangleMask);
+
+    int circle_pixel = countNonZero(circleMask);
+    int umbrella_pixel = countNonZero(umbrellaMask);
+    int star_pixel = countNonZero(starMask);
+    int triangle_pixel = countNonZero(triangleMask);
+    imshow("Circle", circleMask);
+    imshow("Umbrella", umbrellaMask);
+    imshow("Star", starMask);
+    imshow("Triangle", triangleMask);
+
+        if (circle_pixel == 122500)
+    {
+        printf("This is circle\n");
+    }
+    else if (umbrella_pixel == 122500)
+    {
+        printf("This is umbrella\n");
+    }
+    else if (star_pixel == 122500)
+    {
+        printf("This is star\n");
+    }
+    else if (triangle_pixel == 122500)
+    {
+        printf("This is triangle\n");
+    }
+    else
+    {
+        printf("No shape shown\n");
+    }
+
+    closeCV();  // Disable the camera and close any windows
+
+    return 0;
+}
