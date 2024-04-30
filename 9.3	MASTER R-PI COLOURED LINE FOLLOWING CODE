@@ -1,0 +1,267 @@
+//FINAL WEEK 6 R-PI CODE 
+
+
+// Include files for required libraries
+#include <stdio.h>
+#include "opencv_aee.hpp"
+#include "main.hpp"     // You can use this file for declaring defined values and functions
+#include "pi2c.h"
+
+
+void setup(void)
+{
+    setupCamera(320, 240);  // Enable the camera for OpenCV   (columns,rows)
+}
+
+
+void findanddrawcontours(const Mat & mask, Mat & frame, const Scalar & color)
+{
+    std::vector< std::vector<cv::Point> > contours; // Variable for list of contours
+    cv::findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE); // Calculate the contours and store them
+
+    double maxArea = 0.0;
+    int maxAreaContourIndex = -1;
+
+    for (int i = 0; i < contours.size(); i++)
+    {
+        double area = contourArea(contours[i]);
+        if (area > maxArea)
+        {
+            maxArea = area;
+            maxAreaContourIndex = i;
+        }
+    }
+
+    if (maxAreaContourIndex != -1)
+    {
+        drawContours(frame, contours, maxAreaContourIndex, color, 2);
+        // Calculate the center of the contour
+        Point regionCentre = findContourCentre(contours[maxAreaContourIndex]);
+        // Optionally draw the center point
+        circle(frame, regionCentre, 5, Scalar(0, 0, 255), -1);
+        printf("Contour center: x = %dpx, y = %dpx\n", regionCentre.x, regionCentre.y);
+
+
+
+
+    }
+    }
+
+
+
+#define ESP32_ADDRESS 0x04  // I2C address of the ESP32
+
+Point regionCentre_blk;
+int status_black;
+
+int main( int argc, char** argv )
+{
+    setup();    // Call a setup function to prepare IO and devices
+
+
+
+    int lowH = 0, highH = 179, lowS = 0, highS = 255, lowV = 0, highV = 255;    // Initialise some variables for HSV limits
+
+    Mat frame = imread("GreenApplePNG.png"); // Open an image file and store in a new matrix variable
+
+
+//Mat cropped_image = frame(Range(1,1), Range(320,240));
+//imshow("Cropped Image", cropped_image);
+
+    while(1)    // Main loop to perform image processing
+    {
+        Mat frame;
+
+        while(frame.empty())
+            frame = captureFrame(); // Capture a frame from the camera and store in a new matrix variable
+        flip(frame, frame, -1);
+
+        //cv::imshow("Photo", frame); //Display the image in the window
+
+
+///////////////////////////////I2C CODE - START
+
+    Pi2c esp32(4); //Create a new object "esp32" using address "0x04"
+    char receive[16]; //Create a buffer of char (single bytes) for the data
+
+    //Receive from the ESP32 and put the contents into the "receive" char array
+    esp32.i2cRead(receive,16);
+    //Print out what the ESP32 is sending...
+    //std::cout << "ESP32 Says: " << receive << std::endl;
+
+    if (regionCentre_blk.x > 0 && regionCentre_blk.x < 32)    // 1 - ext. left, 2- left, 3- straight, 4- right, 5- ext. right
+    {
+        status_black = 0;
+    }
+
+    else if (regionCentre_blk.x > 32 && regionCentre_blk.x < 64)    // 1 - ext. left, 2- left, 3- straight, 4- right, 5- ext. right
+    {
+        status_black = 1;
+    }
+
+    else if (regionCentre_blk.x > 64 && regionCentre_blk.x < 128)
+    {
+        status_black = 2;
+    }
+
+    else if (regionCentre_blk.x > 128 && regionCentre_blk.x < 192)
+    {
+        status_black = 3;
+    }
+
+    else if (regionCentre_blk.x > 192 && regionCentre_blk.x < 256)
+    {
+        status_black = 4;
+    }
+
+    else if (regionCentre_blk.x > 256 && regionCentre_blk.x < 288)
+    {
+        status_black = 5;
+    }
+
+    else if (regionCentre_blk.x > 288 && regionCentre_blk.x <= 320)
+    {
+        status_black = 6;
+    }
+
+    /*else
+    {
+    status_green = 4;
+    }*/
+
+    std::cout<<status_black<< std::endl;
+
+    //Send an 16 bit integer
+    esp32.i2cWriteArduinoInt(status_black);
+
+
+
+    //Reading - recieving & Writing - sending
+
+///////////////////////////////I2C CODE - END
+
+
+
+
+        ///////////////////////////////////////////////////////////////////////////CONTOUR CODE - START
+
+
+
+        // Convert the image to HSV color space
+        Mat hsvImage;
+        cvtColor(frame, hsvImage, COLOR_BGR2HSV);
+
+
+
+        //BLACK - HSV LIMITS
+        Scalar lowerBlack(0, 0, 0); // Lower bounds of black in HSV
+        Scalar upperBlack(180, 255, 57); // Upper bounds of black in HSV
+
+
+
+
+
+        //BLACK COLOUR EXTRACTION
+        Mat blackMask;
+        inRange(hsvImage, lowerBlack, upperBlack, blackMask);
+
+        //DILATION
+        dilate(blackMask, blackMask, Mat(), Point(-1, -1), 6);
+
+
+        // BLACK - CONTOURS
+        std::vector<std::vector<Point>> blackContours;
+        std::vector<Vec4i> blackHierarchy;
+        findContours(blackMask, blackContours, blackHierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+
+
+        int maxArea = 0;
+    int maxAreaContourIndex = -1;
+
+        Mat contourImage = frame.clone();
+
+        // BLACK - CONTOUR DRAWING
+        for (int i = 0; i < blackContours.size(); i++)
+        {
+            //CONTOUR AREA
+            //int area_blk = contourArea(blackContours[i]); // Calculate the area of a contour
+
+            int area_blk = contourArea(blackContours[i]);
+            if (area_blk > maxArea)
+            {
+                maxArea = area_blk;
+                maxAreaContourIndex = i;
+            }
+        }
+
+        if (maxAreaContourIndex != -1)
+        {
+         drawContours(contourImage, blackContours, maxAreaContourIndex, Scalar(255,0,0), 2);
+        // Calculate the center of the contour
+        regionCentre_blk = findContourCentre(blackContours[maxAreaContourIndex]);
+        //printf("Contour center: x = %dpx, y = %dpx\n", regionCentre_blk.x, regionCentre_blk.y);
+
+         // Optionally draw the center point
+        circle(contourImage, regionCentre_blk, 5, Scalar(255, 255, 255), FILLED);
+
+
+
+
+        // Display the result
+        imshow("Contours", contourImage);
+
+        }
+
+
+
+        ///////////////////////////////////////////////////////////////////////////CONTOUR CODE - END
+
+
+
+
+        //BLACK
+       /* Mat frameHSV_black;
+        cvtColor(frame, frameHSV_black, COLOR_BGR2HSV);
+
+        lowH = 0;
+        highH = 180;
+        lowS = 0;
+        highS = 255;
+        lowV = 0;
+        highV = 57;
+
+        inRange(frameHSV_black, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameHSV_black);
+        int blackpix = countNonZero(frameHSV_black);*/
+
+
+
+
+
+
+
+
+
+
+        //COMPARISON WINDOW - BLACK
+      /*  Mat comparison_black;     // Join the two into a single image
+        cvtColor(frameHSV_black, frameHSV_black, COLOR_GRAY2BGR);   // In range returns the equivalent of a grayscale image so we need to convert this before concatenation
+        hconcat(frame, frameHSV_black, comparison_black);
+
+        imshow("HSV Tester - BLACK", comparison_black); //Display the image in the window
+*/
+
+
+        int key = cv::waitKey(1);   // Wait 1ms for a keypress (required to update windows
+
+        key = (key==255) ? -1 : key;    // Check if the esc key has been pressed
+        if (key == 27)
+            break;
+    }
+
+    destroyAllWindows();
+
+    return 0;
+}
+
+
+
