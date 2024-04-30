@@ -1,0 +1,203 @@
+//FINAL WEEK 6 ESP32 CODE 
+
+
+
+
+#include <Wire.h>
+
+int servoPin = 13;  // the servo is attached to IO_13 on the ESP32
+
+int dutyCycle = 5;
+const int servoFrequency = 50;   // 50Hz signal
+const int servoChannel = 2;      // channels 0 and 1 are used for the two motors on your EEEBot
+const int servoResolution = 12;  // 12-bit PWM signal
+
+int steeringAngle = 90;  // this value can be changed to vary the servo angle - only enter values between 0 and 180 degrees
+
+float leftMotor_speed = 0;  //min 110 for both
+float rightMotor_speed = 0;
+
+//float adjusted_leftMotor_speed;
+//float adjusted_rightMotor_speed;
+
+// L298 motor driver pin definitions
+#define enA 33  // enableA command line
+#define enB 25  // enableB command line
+#define INa 26  // channel A direction
+#define INb 27  // channel A direction
+#define INc 14  // channel B direction
+#define INd 12  // channel B direction
+
+// setting up the PWM properties used for the motors
+const int freq = 2000;
+const int ledChannela = 0;  // assumed as the channel used for the left motor
+const int ledChannelb = 1;  // assumed as the channel used for the righteft motor
+const int resolution = 8;   // 8-bit PWM signal
+
+int status_blk = 0;  //Status condition variable
+
+void setup() {
+  Serial.begin(9600);            // open the serial port at 9600 bps:
+  Wire.begin(0x04);              //Set Arduino up as an I2C slave at address 0x07
+  Wire.onRequest(requestEvent);  //Prepare to send data
+  Wire.onReceive(receiveEvent);  //Prepare to recieve data
+
+
+  //SERVO CODE
+  // put your setup code here, to run once:
+  ledcSetup(servoChannel, servoFrequency, servoResolution);  // servo setup on PWM channel 2, 50Hz, 12-bit (0-4095)
+  ledcAttachPin(servoPin, servoChannel);                     // attach the channel to the GPIO to be controlled
+
+  // the purpose of the following line is to convert between the intuitive 'steering angle' value to the correct control signal for the servo
+  dutyCycle = map((constrain(steeringAngle, 0, 180)), 0, 180, 205, 410);  // contrain() limits the minimum and maximum values to 0 and 180 respectively, map() proportionally scales values between 0 and 180 to values between 205 (5% duty cycle) and 410 (10% duty cycle)
+
+  ledcWrite(servoChannel, dutyCycle);  // write the control signal to the PWM
+
+
+  //MOTOR CODE
+  // configure the motor direction control pins as outputs
+  pinMode(INa, OUTPUT);
+  pinMode(INb, OUTPUT);
+  pinMode(INc, OUTPUT);
+  pinMode(INd, OUTPUT);
+  // pinMode(enA, OUTPUT);
+  // pinMode(enB, OUTPUT);  // if defining some pins as PWM, do not set them as OUTPUT!
+
+  // configure LED PWM functionalities
+  ledcSetup(ledChannela, freq, resolution);
+  ledcSetup(ledChannelb, freq, resolution);
+  ledcSetup(servoChannel, servoFrequency, servoResolution);  //servo setup on PWM channel 2, 50Hz, 12-bit (0-4095)
+
+  // attach the channel to the GPIO to be controlled
+  ledcAttachPin(enA, ledChannela);
+  ledcAttachPin(enB, ledChannelb);
+  ledcAttachPin(servoPin, servoChannel);
+}
+
+void loop() {
+  // Serial.print("leftMotor_speed: \n");
+  // Serial.println(leftMotor_speed);
+
+  // Serial.print("rightMotor_speed: ");
+  // Serial.println(rightMotor_speed);
+
+  void receiveEvent(int numBytes);
+}
+
+void requestEvent() {
+  // unsigned char char_ar[16] = "I2C SUCCESS";  //Create String
+  // Wire.write(char_ar, 16);                    //Write String to Pi.
+}
+
+void receiveEvent(int numBytes) {
+  //Set Up Vars
+  //int status_g = 0;
+
+
+  //int count = 0;
+
+  int status_blk = Wire.read();
+
+ if(status_blk == 0) {
+    changeSteeringAngle(30);
+    leftMotor_speed = 100;
+    rightMotor_speed = 100;
+    //Serial.print("Turn Extreme Right!\n");
+  }
+
+  else if (status_blk == 1) {
+    changeSteeringAngle(45);
+    leftMotor_speed = 100;
+    rightMotor_speed = 100;
+    //Serial.print("Turn Extreme Left!\n");
+  }
+
+  else if(status_blk == 2) {
+    changeSteeringAngle(75);
+    leftMotor_speed = 100;
+    rightMotor_speed = 100;
+    //Serial.print("Turn Left!\n");
+  }
+
+  else if(status_blk == 3) {
+    changeSteeringAngle(90);
+    leftMotor_speed = 100;
+    rightMotor_speed = 100;
+    //Serial.print("Go Straight!\n");
+  }
+
+  else if(status_blk == 4) {
+    changeSteeringAngle(105);
+    leftMotor_speed = 100;
+    rightMotor_speed = 100;
+    //Serial.print("Turn Right!\n");
+  }
+
+  else if(status_blk == 5) {
+    changeSteeringAngle(135);
+    leftMotor_speed = 100;
+    rightMotor_speed = 100;
+    //Serial.print("Turn Extreme Right!\n");
+  }
+
+  else if(status_blk == 6) {
+    changeSteeringAngle(150);
+    leftMotor_speed = 100;
+    rightMotor_speed = 100;
+    //Serial.print("Turn Extreme Right!\n");
+  }
+
+  runMotors(leftMotor_speed, rightMotor_speed);
+
+  //Serial.print("\nStatus_blk: ");
+  Serial.println(status_blk);
+}
+
+
+
+
+
+void changeSteeringAngle(int angle) {
+  steeringAngle = map((constrain(angle, 0, 180)), 0, 180, 205, 410);
+  //steeringAngle = angle + 0;
+  ledcWrite(servoChannel, steeringAngle);
+
+  //Serial.print("Steering Angle: ");
+  //Serial.println(angle);
+}
+
+
+
+
+// function to run the motors - you may need to modify the HIGH/LOW states to get each wheel to rotate in the desired direction
+void runMotors(int leftMotor_speed, int rightMotor_speed) {
+  // limit the speed value between -255 and 255 as the PWM value can only be between 0 and 255 - the negative is handled below
+  leftMotor_speed = constrain(leftMotor_speed, -255, 255);
+  rightMotor_speed = constrain(rightMotor_speed, -255, 255);
+
+  // vary the motor speeds - use the absolute value to remove the negative
+  ledcWrite(ledChannela, abs(leftMotor_speed));
+  ledcWrite(ledChannelb, abs(rightMotor_speed));
+
+  // if the speed value is negative, run the motor backwards
+  if (leftMotor_speed < 0) {
+    digitalWrite(INa, LOW);
+    digitalWrite(INb, HIGH);
+  }
+  // else, run the motor forwards
+  else {
+    digitalWrite(INa, HIGH);
+    digitalWrite(INb, LOW);
+  }
+
+  // if the speed value is negative, run the motor backwards
+  if (rightMotor_speed < 0) {
+    digitalWrite(INc, HIGH);
+    digitalWrite(INd, LOW);
+  }
+  // else run the motor forwards
+  else {
+    digitalWrite(INc, LOW);
+    digitalWrite(INd, HIGH);
+  }
+}
