@@ -1,0 +1,228 @@
+//INTRO TASK COLOUR DETECTOR CODE
+
+#include <stdio.h>
+#include <iostream>
+#include "opencv2/core.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+
+using namespace cv;
+
+int main()
+{
+    int lowH = 0, highH = 179, lowS = 0, highS = 255, lowV = 0, highV = 255;    // Initialise some variables for HSV limits
+
+    Mat frame = imread("GreenApplePNG.png"); // Open an image file and store in a new matrix variable
+
+    while(1)    // Main loop to perform image processing
+    {
+        //BLUE
+        Mat frameHSV_blue;
+        cvtColor(frame, frameHSV_blue, COLOR_BGR2HSV);
+
+        lowH = 95;
+        highH = 130;
+        lowS = 46;
+        highS = 255;
+        lowV = 0;
+        highV = 255;
+
+        inRange(frameHSV_blue, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameHSV_blue);
+        int bluepix = countNonZero(frameHSV_blue);
+
+
+        //GREEN
+        Mat frameHSV_green;
+        cvtColor(frame, frameHSV_green, COLOR_BGR2HSV);
+
+        lowH = 35;   //70 CHANGED TO 35
+        highH = 82;
+        lowS = 104;
+        highS = 255;
+        lowV = 41;
+        highV = 255;
+
+        inRange(frameHSV_green, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameHSV_green);
+        int greenpix = countNonZero(frameHSV_green);
+
+
+        //YELLOW
+        Mat frameHSV_yellow;
+        cvtColor(frame, frameHSV_yellow, COLOR_BGR2HSV);
+
+        lowH = 24;
+        highH = 35;
+        lowS = 84;
+        highS = 255;
+        lowV = 78;
+        highV = 255;
+
+        inRange(frameHSV_yellow, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameHSV_yellow);
+        int yellowpix = countNonZero(frameHSV_yellow);
+
+
+        //BLACK
+        Mat frameHSV_black;
+        cvtColor(frame, frameHSV_black, COLOR_BGR2HSV);
+
+        lowH = 0;
+        highH = 180;
+        lowS = 0;
+        highS = 255;
+        lowV = 0;
+        highV = 57;
+
+        inRange(frameHSV_black, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameHSV_black);
+        int blackpix = countNonZero(frameHSV_black);
+
+
+        //RED
+        Mat frameHSV_red;
+        cvtColor(frame, frameHSV_red, COLOR_BGR2HSV);
+
+        lowH = 173;
+        highH = 180;
+        lowS = 26;
+        highS = 255;
+        lowV = 0;
+        highV = 255;
+
+        inRange(frameHSV_red, Scalar(lowH, lowS, lowV), Scalar(highH, highS, highV), frameHSV_red);
+        int redpix = countNonZero(frameHSV_red);
+
+
+        /*
+        printf("\nBLUE_PIXELS \t= %d\n", bluepix);
+        printf("GREEN_PIXELS \t= %d\n", greenpix);
+        printf("YELLOW_PIXELS \t= %d\n", yellowpix);
+        printf("BLACK_PIXELS \t= %d\n", blackpix);
+        printf("RED_PIXELS \t= %d\n\n", redpix);
+        */
+
+
+        //COMPARISON WINDOW - BLUE
+        Mat comparison_blue;     // Join the two into a single image
+        cvtColor(frameHSV_blue, frameHSV_blue, COLOR_GRAY2BGR);   // In range returns the equivalent of a grayscale image so we need to convert this before concatenation
+        hconcat(frame, frameHSV_blue, comparison_blue);
+
+        imshow("HSV Tester - BLUE", comparison_blue); //Display the image in the window
+
+
+        //COMPARISON WINDOW - GREEN
+        Mat comparison_green;     // Join the two into a single image
+        cvtColor(frameHSV_green, frameHSV_green, COLOR_GRAY2BGR);   // In range returns the equivalent of a grayscale image so we need to convert this before concatenation
+        hconcat(frame, frameHSV_green, comparison_green);
+
+        imshow("HSV Tester - GREEN", comparison_green); //Display the image in the window
+
+
+        //COMPARISON WINDOW - YELLOW
+        Mat comparison_yellow;     // Join the two into a single image
+        cvtColor(frameHSV_yellow, frameHSV_yellow, COLOR_GRAY2BGR);   // In range returns the equivalent of a grayscale image so we need to convert this before concatenation
+        hconcat(frame, frameHSV_yellow, comparison_yellow);
+
+        imshow("HSV Tester - YELLOW", comparison_yellow); //Display the image in the window
+
+
+        //COMPARISON WINDOW - BLACK
+        Mat comparison_black;     // Join the two into a single image
+        cvtColor(frameHSV_black, frameHSV_black, COLOR_GRAY2BGR);   // In range returns the equivalent of a grayscale image so we need to convert this before concatenation
+        hconcat(frame, frameHSV_black, comparison_black);
+
+        imshow("HSV Tester - BLACK", comparison_black); //Display the image in the window
+
+
+        //COMPARISON WINDOW - RED
+        Mat comparison_red;     // Join the two into a single image
+        cvtColor(frameHSV_red, frameHSV_red, COLOR_GRAY2BGR);   // In range returns the equivalent of a grayscale image so we need to convert this before concatenation
+        hconcat(frame, frameHSV_red, comparison_red);
+
+        imshow("HSV Tester - RED", comparison_red); //Display the image in the window
+
+
+
+
+        //ARRAY TO DETECT COLOUR SHOWN
+        int arr[] = {bluepix, greenpix, yellowpix, blackpix, redpix};
+        int temp = 0;
+
+        int length = sizeof(arr)/sizeof(arr[0]);
+
+        //printf("Elements of original array: [");
+        for (int i = 0; i < length; i++)
+        {
+            //printf("%d ", arr[i]);
+        }
+        //printf("]\n");
+
+        for (int i = 0; i < length; i++)
+        {
+            for (int j = i+1; j < length; j++)
+            {
+                if(arr[i] > arr[j])
+                {
+                    temp = arr[i];
+                    arr[i] = arr[j];
+                    arr[j] = temp;
+                }
+            }
+        }
+
+        //printf("Elements of array sorted in ascending order: [");
+        for (int i = 0; i < length; i++)
+        {
+            //printf("%d ", arr[i]);
+        }
+        //printf("]\n");
+
+
+
+        //CODE TO PICK HIGHEST VALUE FROM ARRAY AND DETECT COLOUR
+        int final_colour = arr[4];
+        //printf("final_colour value = %d\n", final_colour); //SANITY CHECK
+
+if (final_colour == bluepix)
+{
+    printf("\nBLUE COLOUR!\n");
+}
+
+else if (final_colour == greenpix)
+{
+    printf("\nGREEN COLOUR!\n");
+}
+
+else if (final_colour == yellowpix)
+{
+    printf("\nYELLOW COLOUR!\n");
+}
+
+else if (final_colour == blackpix)
+{
+    printf("\nBLACK COLOUR!\n");
+}
+
+else if (final_colour == redpix)
+{
+    printf("\nRED COLOUR!\n");
+}
+
+printf("\n*** UPDATING DATA ***\n\n");
+
+        int key = cv::waitKey(1);   // Wait 1ms for a keypress (required to update windows
+
+        key = (key==255) ? -1 : key;    // Check if the esc key has been pressed
+        if (key == 27)
+            break;
+    }
+
+
+
+
+
+    destroyAllWindows();
+
+    return 0;
+}
+
+
+
